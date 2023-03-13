@@ -73,9 +73,9 @@ export class SeguridadUsuarioService {
   }
 
   /**
-   *
-   * @param usuario
-   * @returns
+   * Generación de jwt
+   * @param usuario información del usuario
+   * @returns token
    */
   crearToken(usuario: Usuario): string{
     const datos = {

@@ -1,3 +1,4 @@
+import {authenticate} from '@loopback/authentication';
 import {service} from '@loopback/core';
 import {
   Count,
@@ -24,7 +25,7 @@ export class UsuarioController {
     public servicioSeguridad: SeguridadUsuarioService,
     @repository(LoginRepository)
     public repositorioLogin: LoginRepository
-    ) {}
+  ) { }
 
   @post('/usuario')
   @response(200, {
@@ -65,7 +66,7 @@ export class UsuarioController {
   ): Promise<Count> {
     return this.usuarioRepository.count(where);
   }
-
+  @authenticate("auth")
   @get('/usuario')
   @response(200, {
     description: 'Array of Usuario model instances',
@@ -180,13 +181,15 @@ export class UsuarioController {
     const usuario = await this.servicioSeguridad.identificarUsuario(credenciales);
     if (usuario) {
       const codigo2fa = this.servicioSeguridad.crearTextoAleatorio(5);
+      console.log(codigo2fa)
       const login:Login = new Login();
       login.usuarioId = usuario._id!;
       login.codigo2fa = codigo2fa;
       login.estadoCodigo2fa = false;
       login.token = "";
       login.estadoToken = false;
-      await this.repositorioLogin.create(login);
+      this.repositorioLogin.create(login);
+      usuario.clave = "";
       // notificar al usuario vía correo o sms
       return usuario;
     }
@@ -216,6 +219,17 @@ export class UsuarioController {
       const token = this.servicioSeguridad.crearToken(usuario);
       if(usuario){
         usuario.clave = "";
+        try{
+          this.usuarioRepository.logins(usuario._id).patch({
+            estadoCodigo2fa:true,
+            token: token
+          },
+          {
+            estadoCodigo2fa:false
+          });
+        }catch{
+        console.log("No se ha almacenado el cambio del estado de token en la base de datos")
+        }
         return {
           user: usuario,
           token: token
